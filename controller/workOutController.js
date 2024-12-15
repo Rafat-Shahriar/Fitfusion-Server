@@ -10,6 +10,31 @@ const getWorkData = async (req, res) => {
     res.send(userData);
 };
 
+const getallWorkdata = async (req, res) => {
+    const db = getDatabase();
+    const userCollections = db.collection('fitFusionWorkout');
+    const userEmail = req.params.email;
+    const userData = await userCollections.find({ email: userEmail }).toArray();
+    res.send(userData);
+};
+
+const getWorkdataemail = async (req, res) => {
+    const db = getDatabase();
+        const userCollections = db.collection('fitFusionWorkout');
+        const userEmail = req.params.email;
+        const currentWeek = parseInt(req.query.weekNumber); 
+        console.log(currentWeek,userEmail);
+        
+        const userData = await userCollections.find({ 
+            email: userEmail, 
+            weekNumber: currentWeek 
+        }).toArray();
+        console.log(userData);
+        
+
+        res.send(userData);
+};
+
 const completeWorkout = async (req, res) => {
     const db = getDatabase();
     const workoutCollection = db.collection('fitFusionWorkout');
@@ -17,14 +42,13 @@ const completeWorkout = async (req, res) => {
     const updatedData = req.body;
 
     try {
-        // Update the workout status for the specified user
-        const result = await workoutCollection.updateOne(
-            { email: userEmail }, // Match the user's workout
-            { $set: updatedData } // Update fields with the provided data
-        );
+        // Remove _id from updatedData if it exists
+        const { _id, ...dataToUpdate } = updatedData;
 
-        // Remove sensitive fields like `_id` from the response if needed
-        delete updatedData._id;
+        const result = await workoutCollection.updateOne(
+            { email: userEmail },
+            { $set: dataToUpdate }
+        );
 
         if (result.modifiedCount > 0) {
             res.status(200).send({ message: "Workout status updated successfully" });
@@ -37,20 +61,43 @@ const completeWorkout = async (req, res) => {
     }
 };
 
-
 const saveWorkData = async (req, res) => {
     const workOutData = req.body;
     const db = getDatabase();
     const workOutCollection = db.collection('fitFusionWorkout');
-    const result = await workOutCollection.insertOne(workOutData);
+    
+    try {
+        // Check if workout data already exists for this user and day
+        const existingWorkout = await workOutCollection.findOne({ 
+            email: workOutData.email,
+            day: workOutData.day
+        });
 
-    res.status(201).send({ message: 'Meal data saved successfully', result })
+        if (existingWorkout) {
+            // If exists, update it
+            const { _id, ...dataToUpdate } = workOutData;
+            const result = await workOutCollection.updateOne(
+                { email: workOutData.email, day: workOutData.day },
+                { $set: dataToUpdate }
+            );
+            res.status(200).send({ message: 'Workout data updated successfully', result });
+        } else {
+            // If doesn't exist, create new
+            const result = await workOutCollection.insertOne(workOutData);
+            res.status(201).send({ message: 'Workout data saved successfully', result });
+        }
+    } catch (error) {
+        console.error("Error saving workout data:", error);
+        res.status(500).send({ message: "An error occurred while saving the workout data" });
+    }
 };
 
 
 
 module.exports = {
     getWorkData,
+    getallWorkdata,
+    getWorkdataemail,
     saveWorkData,
     completeWorkout
 };

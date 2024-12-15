@@ -3,10 +3,15 @@ const router = express.Router();
 const {
     saveWorkData,
     getWorkData,
-    completeWorkout
+    completeWorkout,
+    getallWorkdata,
+    getWorkdataemail
+
 } = require('../controller/workOutController');
 
 router.get('/workout/:email', getWorkData);
+router.get('/allWorkout/:email', getallWorkdata);
+router.get('/allWeakWorkout/:email', getWorkdataemail);
 router.post('/workOut', saveWorkData);
 router.put('/workout/:email', completeWorkout);
 
